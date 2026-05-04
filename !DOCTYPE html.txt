@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids' Skills - Interaktywny Plakat z Notatkami ✨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background-color: #f8fafc;
+        }
+        h1, h2, h3 {
+            font-family: 'Fredoka One', cursive;
+        }
+        .step-card {
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        .step-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+        .step-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid transparent;
+            border-radius: 0.75rem;
+            padding: 0.5rem;
+            font-size: 0.875rem;
+            color: #1f2937;
+            resize: none;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+            min-height: 60px;
+        }
+        .step-input:focus {
+            background: white;
+            border-color: currentColor;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+        }
+        .gemini-btn {
+            background: linear-gradient(90deg, #4f46e5, #9333ea);
+            transition: all 0.2s;
+        }
+        .gemini-btn:hover {
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        #fireworks-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #congrats-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(8px);
+            z-index: 110;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            animation: fadeIn 1s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes popUp {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .congrats-text {
+            font-family: 'Fredoka One', cursive;
+            animation: popUp 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        /* Sekcja Ściągawki */
+        #summary-section {
+            display: none;
+            margin-top: 2rem;
+            page-break-before: always;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white !important; padding: 0 !important; }
+            .main-container { 
+                box-shadow: none !important; 
+                border: none !important;
+                margin: 0 !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+            }
+            .step-input { 
+                border: none !important; 
+                background: transparent !important; 
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            header { background: #3b82f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            #summary-section { display: block !important; }
+        }
+        
+        .dot-flashing {
+            position: relative;
+            width: 10px;
+            height: 10px;
+            border-radius: 5px;
+            background-color: #ffffff;
+            animation: dot-flashing 1s infinite linear alternate;
+            animation-delay: .5s;
+        }
+        .dot-flashing::before, .dot-flashing::after {
+            content: '';
+            display: inline-block;
+            position: absolute;
+            top: 0;
+        }
+        .dot-flashing::before { left: -15px; width: 10px; height: 10px; border-radius: 5px; background-color: #ffffff; animation: dot-flashing 1s infinite alternate; animation-delay: 0s; }
+        .dot-flashing::after { left: 15px; width: 10px; height: 10px; border-radius: 5px; background-color: #ffffff; animation: dot-flashing 1s infinite alternate; animation-delay: 1s; }
+        @keyframes dot-flashing { 0% { background-color: #ffffff; } 50%, 100% { background-color: rgba(255, 255, 255, 0.2); } }
+
+        .ai-hint-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 6px;
+            font-size: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .ai-hint-btn:hover {
+            opacity: 1;
+            background: #e0e7ff;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <canvas id="fireworks-canvas"></canvas>
+
+    <!-- Overlay z Gratulacjami -->
+    <div id="congrats-overlay" onclick="this.style.display='none'">
+        <div class="congrats-text p-8 bg-white rounded-[3rem] shadow-2xl border-8 border-indigo-100 max-w-2xl mx-4">
+            <div class="text-6xl mb-4">🏆</div>
+            <h2 class="text-4xl md:text-5xl text-indigo-600 mb-4">Wielkie Gratulacje!</h2>
+            <p class="text-2xl md:text-3xl text-gray-700 leading-relaxed">
+                Brawo dla <span class="text-purple-600">Klasy 3A</span><br>
+                oraz <span class="text-rose-500">Pani Wychowawczyni</span>!
+            </p>
+            <p class="mt-6 text-sm text-gray-400 uppercase tracking-widest italic">Kliknij, aby zamknąć</p>
+        </div>
+    </div>
+
+    <div id="poster-area" class="main-container max-w-5xl mx-auto bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-4 border-white">
+        
+        <header class="bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white text-center py-10 px-6 relative overflow-hidden">
+            <div class="relative z-10">
+                <h1 class="text-4xl md:text-5xl mb-2 drop-shadow-lg tracking-tight uppercase">KIDS' SKILLS</h1>
+                <p class="text-lg md:text-xl font-semibold opacity-95 italic">Uzupełnij swój własny plan „Dam Radę!” ✨</p>
+            </div>
+            <div class="absolute top-0 left-0 w-32 h-32 bg-white opacity-10 rounded-full -translate-x-16 -translate-y-16"></div>
+        </header>
+
+        <main class="p-6 md:p-10 space-y-10">
+            
+            <!-- ETAP 1 -->
+            <section>
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="flex items-center justify-center w-10 h-10 bg-rose-500 text-white rounded-xl font-bold text-xl shadow-lg shadow-rose-200">1</span>
+                    <h2 class="text-2xl text-rose-600 uppercase tracking-tight">Przygotowanie Misji</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="step-card bg-rose-50 p-4 rounded-2xl border-b-4 border-rose-200 text-rose-700">
+                        <button onclick="showGeminiModal('1', 'Poszukiwanie Umiejętności')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 01</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Poszukiwanie Umiejętności</p>
+                        <textarea data-step="1" data-label="Poszukiwanie Umiejętności" class="step-input" placeholder="Co będę ćwiczyć?"></textarea>
+                    </div>
+                    <div class="step-card bg-rose-50 p-4 rounded-2xl border-b-4 border-rose-200 text-rose-700">
+                        <button onclick="showGeminiModal('2', 'Wybierz Cel')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 02</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Wybierz Cel</p>
+                        <textarea data-step="2" data-label="Wybierz Cel" class="step-input" placeholder="Wpisz Cel..."></textarea>
+                    </div>
+                    <div class="step-card bg-rose-50 p-4 rounded-2xl border-b-4 border-rose-200 text-rose-700">
+                        <button onclick="showGeminiModal('3', 'Korzyści')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 03</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Korzyści</p>
+                        <textarea data-step="3" data-label="Korzyści" class="step-input" placeholder="Dlaczego warto?"></textarea>
+                    </div>
+                    <div class="step-card bg-rose-50 p-4 rounded-2xl border-b-4 border-rose-200 text-rose-700">
+                        <button onclick="showGeminiModal('4', 'Nazwa Mocy')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 04</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Nazwa Mocy</p>
+                        <textarea data-step="4" data-label="Nazwa Mocy" class="step-input" placeholder="Jak ją nazwiemy?"></textarea>
+                    </div>
+                    <div class="step-card bg-rose-50 p-4 rounded-2xl border-b-4 border-rose-200 text-rose-700">
+                        <button onclick="showGeminiModal('5', 'Twój Patron')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 05</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Twój Patron</p>
+                        <textarea data-step="5" data-label="Twój Patron" class="step-input" placeholder="Kto ci pomoże?"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ETAP 2 -->
+            <section>
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="flex items-center justify-center w-10 h-10 bg-amber-500 text-white rounded-xl font-bold text-xl shadow-lg shadow-amber-200">2</span>
+                    <h2 class="text-2xl text-amber-600 uppercase tracking-tight">Budowanie Mocy</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="step-card bg-amber-50 p-5 rounded-2xl border-b-4 border-amber-200 text-amber-700">
+                        <button onclick="showGeminiModal('6', 'Ekipa Wspierająca')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 06</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Ekipa Wspierająca</p>
+                        <textarea data-step="6" data-label="Ekipa Wspierająca" class="step-input" placeholder="Kogo zaprosisz do ekipy?"></textarea>
+                    </div>
+                    <div class="step-card bg-amber-50 p-5 rounded-2xl border-b-4 border-amber-200 text-amber-700">
+                        <button onclick="showGeminiModal('7', 'Pewność Siebie')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 07</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Pewność Siebie</p>
+                        <textarea data-step="7" data-label="Pewność Siebie" class="step-input" placeholder="Dlaczego się uda?"></textarea>
+                    </div>
+                    <div class="step-card bg-amber-50 p-5 rounded-2xl border-b-4 border-amber-200 text-amber-700">
+                        <button onclick="showGeminiModal('8', 'Plan Świętowania')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 08</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Plan Świętowania</p>
+                        <textarea data-step="8" data-label="Plan Świętowania" class="step-input" placeholder="Jak uczcimy sukces?"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ETAP 3 -->
+            <section>
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="flex items-center justify-center w-10 h-10 bg-emerald-500 text-white rounded-xl font-bold text-xl shadow-lg shadow-emerald-200">3</span>
+                    <h2 class="text-2xl text-emerald-600 uppercase tracking-tight">Trening Mistrza</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="step-card bg-emerald-50 p-4 rounded-2xl border-b-4 border-emerald-200 text-emerald-700">
+                        <button onclick="showGeminiModal('9', 'Pokaż Umiejętność')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 09</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Pokaż Umiejętność</p>
+                        <textarea data-step="9" data-label="Pokaż Umiejętność" class="step-input" placeholder="Jak to wygląda?"></textarea>
+                    </div>
+                    <div class="step-card bg-emerald-50 p-4 rounded-2xl border-b-4 border-emerald-200 text-emerald-700">
+                        <button onclick="showGeminiModal('10', 'Ogłoś Światu')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 10</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Ogłoś Światu</p>
+                        <textarea data-step="10" data-label="Ogłoś Światu" class="step-input" placeholder="Kto już wie?"></textarea>
+                    </div>
+                    <div class="step-card bg-emerald-50 p-4 rounded-2xl border-b-4 border-emerald-200 text-emerald-700">
+                        <button onclick="showGeminiModal('11', 'Ćwicz Codziennie')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 11</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Ćwicz Codziennie</p>
+                        <textarea data-step="11" data-label="Ćwicz Codziennie" class="step-input" placeholder="Kiedy trenujemy?"></textarea>
+                    </div>
+                    <div class="step-card bg-emerald-50 p-4 rounded-2xl border-b-4 border-emerald-200 text-emerald-700">
+                        <button onclick="showGeminiModal('12', 'Przypominajka')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 12</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Przypominajka</p>
+                        <textarea data-step="12" data-label="Przypominajka" class="step-input" placeholder="Co mi przypomni?"></textarea>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ETAP 4 -->
+            <section>
+                <div class="flex items-center gap-4 mb-6">
+                    <span class="flex items-center justify-center w-10 h-10 bg-blue-500 text-white rounded-xl font-bold text-xl shadow-lg shadow-blue-200">4</span>
+                    <h2 class="text-2xl text-blue-600 uppercase tracking-tight">Utrwalanie</h2>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="step-card bg-blue-50 p-5 rounded-2xl border-b-4 border-blue-200 text-blue-700">
+                        <button onclick="showGeminiModal('13', 'Plan na Trudności')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 13</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Plan na Trudności</p>
+                        <textarea data-step="13" data-label="Plan na Trudności" class="step-input" placeholder="Gdy będzie ciężko..."></textarea>
+                    </div>
+                    <div class="step-card bg-blue-50 p-5 rounded-2xl border-b-4 border-blue-200 text-blue-700">
+                        <button onclick="showGeminiModal('14', 'Wielki Finał!')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 14</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Wielki Finał!</p>
+                        <textarea data-step="14" data-label="Wielki Finał!" class="step-input" placeholder="Jak świętujemy?"></textarea>
+                    </div>
+                    <div class="step-card bg-blue-50 p-5 rounded-2xl border-b-4 border-blue-200 text-blue-700">
+                        <button onclick="showGeminiModal('15', 'Ucz Innych')" class="no-print ai-hint-btn">✨</button>
+                        <p class="font-bold text-xs uppercase mb-1">Krok 15</p>
+                        <p class="text-sm font-bold text-gray-800 leading-tight">Ucz Innych</p>
+                        <textarea data-step="15" data-label="Ucz Innych" class="step-input" placeholder="Kogo nauczę?"></textarea>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="bg-slate-50 py-10 text-center border-t border-slate-100">
+            <p class="text-slate-400 italic text-xl px-6 max-w-2xl mx-auto">
+                „Każdy problem to <span class="text-indigo-400 font-bold">Umiejętność</span>, której jeszcze nie opanowałeś.”
+            </p>
+        </footer>
+
+        <!-- NOWA SEKCJA: ZESTAWIENIE ŚCIĄGAWKA -->
+        <div id="summary-section" class="p-10 border-t-8 border-indigo-500">
+            <div class="text-center mb-8">
+                <h3 class="text-3xl text-indigo-700 uppercase mb-2">Moja Ściągawka „Dam Radę!”</h3>
+                <p class="text-gray-500 font-semibold italic">Podsumowanie planu treningowego umiejętności</p>
+            </div>
+            <div id="summary-table-container" class="overflow-hidden rounded-2xl border-2 border-slate-100">
+                <!-- Tabela generowana przez JS -->
+            </div>
+            <p class="mt-8 text-center text-slate-400 text-xs uppercase tracking-widest">Wydrukowano z aplikacji Kids' Skills</p>
+        </div>
+    </div>
+
+    <!-- Sterowanie -->
+    <div class="no-print mt-8 mb-16 flex flex-col items-center gap-4">
+        <div id="action-buttons" class="hidden flex flex-col items-center gap-4">
+            <button id="celebrate-btn" onclick="triggerCelebration()" class="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 hover:from-yellow-500 hover:to-red-600 text-white font-black py-4 px-12 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.5)] transition transform hover:scale-110 active:scale-95 flex items-center gap-3 animate-bounce">
+                <span class="text-2xl">🎉</span> ŚWIĘTUJEMY SUKCES! <span class="text-2xl">🚀</span>
+            </button>
+            
+            <button onclick="generateSummary()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-2">
+                <span>📝</span> Generuj Ściągawkę Klasową
+            </button>
+        </div>
+
+        <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transition transform active:scale-95 flex items-center gap-2">
+            <span>🖨️</span> Zapisz plakat (PDF)
+        </button>
+        <p id="progress-hint" class="text-[10px] text-slate-400 uppercase tracking-widest text-center">Wypełnij wszystkie 15 kroków, aby odblokować zestawienie!</p>
+    </div>
+
+    <!-- Modal Gemini -->
+    <div id="gemini-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+        <div class="bg-white w-full max-w-md rounded-[2rem] overflow-hidden shadow-2xl transition-all">
+            <div class="p-8">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-xl">✨</div>
+                    <h3 id="modal-title" class="text-xl font-bold text-gray-900 uppercase leading-tight">Pomoc Gemini</h3>
+                </div>
+                
+                <div id="modal-input-group">
+                    <label id="modal-label" class="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Krok:</label>
+                    <p id="modal-step-name" class="text-indigo-600 font-bold mb-4"></p>
+                    <textarea id="user-input" class="w-full border-2 border-slate-100 rounded-xl p-4 focus:border-indigo-300 focus:outline-none h-24 text-gray-800 transition-all" placeholder="Podaj trochę szczegółów, aby Gemini mogło pomóc..."></textarea>
+                    
+                    <button id="generate-btn" class="w-full mt-4 py-3 rounded-xl text-white font-bold gemini-btn shadow-md uppercase text-xs tracking-widest">
+                        Zaproponuj rozwiązanie
+                    </button>
+                </div>
+
+                <div id="modal-result" class="hidden">
+                    <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-6 max-h-60 overflow-y-auto">
+                        <p id="result-text" class="text-gray-800 text-sm italic"></p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="closeModal()" class="flex-1 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase">
+                            Zamknij
+                        </button>
+                    </div>
+                </div>
+
+                <div id="modal-loading" class="hidden py-10 flex flex-col items-center gap-4">
+                    <div class="dot-flashing"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+        let currentStepId = '';
+        let currentStepName = '';
+
+        const inputs = document.querySelectorAll('.step-input');
+        const actionButtons = document.getElementById('action-buttons');
+        const hint = document.getElementById('progress-hint');
+
+        function checkCompletion() {
+            let filledCount = 0;
+            inputs.forEach(input => {
+                if (input.value.trim().length > 0) filledCount++;
+            });
+
+            if (filledCount >= 15) {
+                actionButtons.classList.remove('hidden');
+                hint.innerText = "Brawo! Możesz teraz wygenerować ściągawkę!";
+            } else {
+                actionButtons.classList.add('hidden');
+                hint.innerText = `Uzupełniono: ${filledCount}/15. Wypełnij wszystko, by odblokować dodatki!`;
+            }
+        }
+
+        function generateSummary() {
+            const container = document.getElementById('summary-table-container');
+            const summarySection = document.getElementById('summary-section');
+            
+            let tableHtml = `
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-indigo-600 text-white">
+                            <th class="p-4 text-xs uppercase tracking-wider border-b border-indigo-700">Krok</th>
+                            <th class="p-4 text-xs uppercase tracking-wider border-b border-indigo-700">Zadanie</th>
+                            <th class="p-4 text-xs uppercase tracking-wider border-b border-indigo-700">Moja Odpowiedź</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+            `;
+
+            inputs.forEach(input => {
+                const stepNum = input.getAttribute('data-step');
+                const label = input.getAttribute('data-label');
+                const val = input.value || "---";
+                
+                tableHtml += `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="p-4 font-bold text-indigo-500 w-16 text-center">${stepNum}</td>
+                        <td class="p-4 font-semibold text-slate-700 text-sm w-48">${label}</td>
+                        <td class="p-4 text-slate-600 text-sm italic">${val}</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table>`;
+            container.innerHTML = tableHtml;
+            summarySection.style.display = 'block';
+            
+            // Przewiń do ściągawki
+            summarySection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        inputs.forEach(el => {
+            el.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                checkCompletion();
+            });
+        });
+
+        // --- FAJERWERKI ---
+        const canvas = document.getElementById('fireworks-canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let animationFrame;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.velocity = {
+                    x: (Math.random() - 0.5) * 8,
+                    y: (Math.random() - 0.5) * 8
+                };
+                this.alpha = 1;
+                this.friction = 0.95;
+            }
+            draw() {
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            }
+            update() {
+                this.velocity.x *= this.friction;
+                this.velocity.y *= this.friction;
+                this.velocity.y += 0.05; 
+                this.x += this.velocity.x;
+                this.y += this.velocity.y;
+                this.alpha -= 0.01;
+            }
+        }
+
+        function createFirework(x, y) {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#ffffff', '#ffaa00'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            for (let i = 0; i < 40; i++) {
+                particles.push(new Particle(x, y, color));
+            }
+        }
+
+        function animateFireworks() {
+            if (particles.length === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+            animationFrame = requestAnimationFrame(animateFireworks);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach((p, i) => {
+                if (p.alpha > 0) {
+                    p.update();
+                    p.draw();
+                } else {
+                    particles.splice(i, 1);
+                }
+            });
+        }
+
+        function triggerCelebration() {
+            animateFireworks();
+            let count = 0;
+            const interval = setInterval(() => {
+                createFirework(Math.random() * canvas.width, Math.random() * (canvas.height * 0.6));
+                count++;
+                if (count > 25) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('congrats-overlay').style.display = 'flex';
+                    }, 1000);
+                }
+            }, 250);
+        }
+
+        // --- AI LOGIC ---
+        function showGeminiModal(stepId, stepName) {
+            currentStepId = stepId;
+            currentStepName = stepName;
+            
+            const modal = document.getElementById('gemini-modal');
+            const stepNameDisplay = document.getElementById('modal-step-name');
+            const input = document.getElementById('user-input');
+            const resultArea = document.getElementById('modal-result');
+            const inputGroup = document.getElementById('modal-input-group');
+            const loading = document.getElementById('modal-loading');
+
+            modal.classList.remove('hidden');
+            resultArea.classList.add('hidden');
+            inputGroup.classList.remove('hidden');
+            loading.classList.add('hidden');
+            
+            stepNameDisplay.innerText = stepName;
+            input.value = '';
+        }
+
+        function closeModal() {
+            document.getElementById('gemini-modal').classList.add('hidden');
+        }
+
+        async function callGemini(prompt, system) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                systemInstruction: { parts: [{ text: system }] }
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Przepraszam, nie mogłem teraz wygenerować sugestii. Spróbuj jeszcze raz.";
+            } catch (err) {
+                return "Błąd połączenia. Sprawdź internet.";
+            }
+        }
+
+        document.getElementById('generate-btn').addEventListener('click', async () => {
+            const val = document.getElementById('user-input').value;
+            
+            document.getElementById('modal-input-group').classList.add('hidden');
+            document.getElementById('modal-loading').classList.remove('hidden');
+
+            const system = "Jesteś ekspertem Kids' Skills (Metoda 15 kroków Bena Furmana). Pomagasz dziecku/rodzicowi wypełnić plakat. Odpowiadaj krótko (max 3 zdania), wesoło i motywująco w języku polskim.";
+            
+            let prompt = `Pomóż mi w kroku "${currentStepName}". `;
+            if (val) prompt += `Oto dodatkowe informacje: "${val}". `;
+            prompt += "Zaproponuj co mogę wpisać w ten kafelek plakatu.";
+
+            const res = await callGemini(prompt, system);
+            document.getElementById('result-text').innerText = res;
+            document.getElementById('modal-loading').classList.add('hidden');
+            document.getElementById('modal-result').classList.remove('hidden');
+        });
+
+        window.addEventListener('click', (e) => {
+            if(e.target === document.getElementById('gemini-modal')) closeModal();
+        });
+    </script>
+</body>
+</html>
